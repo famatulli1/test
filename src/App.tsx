@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { Box, Container, Typography, Paper, List, ListItem, IconButton, Alert, Snackbar, useTheme } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import AudioRecorder from './components/AudioRecorder';
+import ThemeToggle from './components/ThemeToggle';
 import { whisperService } from './services/whisperService';
 import { storageService } from './services/storageService';
 import { AudioRecord } from './types/audio.types';
 import { formatDuration } from './utils/timeFormat';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [records, setRecords] = useState<AudioRecord[]>([]);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     loadRecords();
@@ -29,7 +33,7 @@ const App: React.FC = () => {
     const newRecord: AudioRecord = {
       id: uuidv4(),
       blob,
-      duration: Math.ceil(blob.size / 44100), // Estimation approximative
+      duration: Math.ceil(blob.size / 44100),
       timestamp: Date.now(),
       editHistory: []
     };
@@ -38,7 +42,6 @@ const App: React.FC = () => {
       await storageService.saveRecord(newRecord);
       setRecords(prev => [...prev, newRecord]);
       
-      // Lancer la transcription
       setIsTranscribing(true);
       setError(null);
       
@@ -48,7 +51,7 @@ const App: React.FC = () => {
         ...newRecord,
         transcription: {
           text: transcription,
-          segments: [] // À implémenter avec la version complète de l'API Whisper
+          segments: []
         }
       };
       
@@ -76,161 +79,131 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="app-container">
-      <header>
-        <h1>Dictaphone Avancé</h1>
-      </header>
+    <Box sx={{ 
+      minHeight: '100vh',
+      bgcolor: theme.palette.background.default,
+      pt: 3,
+      pb: 8
+    }}>
+      <ThemeToggle />
+      <Container maxWidth="md">
+        <Typography 
+          variant="h3" 
+          component="h1" 
+          align="center"
+          color="primary"
+          gutterBottom
+          sx={{ mb: 4 }}
+        >
+          Dictaphone Avancé
+        </Typography>
 
-      <main>
         <AudioRecorder onRecordingComplete={handleRecordingComplete} />
 
-        {error && (
-          <div className="error-banner">
-            {error}
-            <button onClick={() => setError(null)}>×</button>
-          </div>
-        )}
+        <Box sx={{ mt: 6 }}>
+          <Typography 
+            variant="h5" 
+            component="h2"
+            gutterBottom
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
+            Enregistrements
+            {isTranscribing && (
+              <Typography variant="body2" color="text.secondary">
+                (Transcription en cours...)
+              </Typography>
+            )}
+          </Typography>
 
-        <div className="records-list">
-          <h2>Enregistrements {isTranscribing && <span>(Transcription en cours...)</span>}</h2>
-          
           {records.length === 0 ? (
-            <p className="no-records">Aucun enregistrement</p>
+            <Typography 
+              variant="body1" 
+              color="text.secondary"
+              align="center"
+              sx={{ mt: 4 }}
+            >
+              Aucun enregistrement
+            </Typography>
           ) : (
-            records.map(record => (
-              <div key={record.id} className="record-item">
-                <div className="record-info">
-                  <span className="record-date">
-                    {new Date(record.timestamp).toLocaleString()}
-                  </span>
-                  <span className="record-duration">
-                    {formatDuration(record.duration)}
-                  </span>
-                </div>
-                
-                {record.transcription && (
-                  <div className="transcription">
-                    {record.transcription.text}
-                  </div>
-                )}
-                
-                <div className="record-actions">
-                  <button 
-                    onClick={() => handleDeleteRecord(record.id)}
-                    className="delete-button"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              </div>
-            ))
+            <List>
+              {records.map(record => (
+                <ListItem
+                  key={record.id}
+                  component={Paper}
+                  sx={{ 
+                    mb: 2,
+                    p: 2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1
+                  }}
+                  elevation={2}
+                >
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    color: 'text.secondary'
+                  }}>
+                    <Typography variant="body2">
+                      {new Date(record.timestamp).toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2">
+                      {formatDuration(record.duration)}
+                    </Typography>
+                  </Box>
+
+                  {record.transcription && (
+                    <Paper 
+                      variant="outlined" 
+                      sx={{ 
+                        p: 2,
+                        bgcolor: theme.palette.action.hover,
+                        width: '100%'
+                      }}
+                    >
+                      <Typography variant="body1">
+                        {record.transcription.text}
+                      </Typography>
+                    </Paper>
+                  )}
+
+                  <Box sx={{ alignSelf: 'flex-end' }}>
+                    <IconButton
+                      onClick={() => handleDeleteRecord(record.id)}
+                      color="error"
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                </ListItem>
+              ))}
+            </List>
           )}
-        </div>
-      </main>
+        </Box>
+      </Container>
 
-      <style>{`
-        .app-container {
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 20px;
-        }
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+      >
+        <Alert 
+          onClose={() => setError(null)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+};
 
-        header {
-          text-align: center;
-          margin-bottom: 40px;
-        }
-
-        header h1 {
-          color: #2196F3;
-          margin: 0;
-        }
-
-        .error-banner {
-          background-color: #ffebee;
-          color: #f44336;
-          padding: 10px 20px;
-          border-radius: 4px;
-          margin: 20px 0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .error-banner button {
-          background: none;
-          border: none;
-          color: #f44336;
-          font-size: 20px;
-          cursor: pointer;
-        }
-
-        .records-list {
-          margin-top: 40px;
-        }
-
-        .records-list h2 {
-          color: #333;
-          margin-bottom: 20px;
-        }
-
-        .records-list h2 span {
-          font-size: 0.8em;
-          color: #666;
-          font-weight: normal;
-        }
-
-        .no-records {
-          text-align: center;
-          color: #666;
-          font-style: italic;
-        }
-
-        .record-item {
-          background: white;
-          border-radius: 8px;
-          padding: 15px;
-          margin-bottom: 15px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .record-info {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 10px;
-          color: #666;
-          font-size: 0.9em;
-        }
-
-        .transcription {
-          padding: 10px;
-          background: #f5f5f5;
-          border-radius: 4px;
-          margin: 10px 0;
-          font-size: 0.95em;
-          line-height: 1.4;
-        }
-
-        .record-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-        }
-
-        .delete-button {
-          background-color: #ff5252;
-          color: white;
-          border: none;
-          padding: 5px 10px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 0.9em;
-        }
-
-        .delete-button:hover {
-          background-color: #ff1744;
-        }
-      `}</style>
-    </div>
+const App: React.FC = () => {
+  return (
+    <AppContent />
   );
 };
 

@@ -1,4 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { Box, IconButton, Paper, Typography, useTheme } from '@mui/material';
+import MicIcon from '@mui/icons-material/Mic';
+import StopIcon from '@mui/icons-material/Stop';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
 import WaveSurfer from 'wavesurfer.js';
 import { useAudioRecording } from '../hooks/useAudioRecording';
 import { formatDuration } from '../utils/timeFormat';
@@ -8,6 +13,7 @@ interface AudioRecorderProps {
 }
 
 const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete }) => {
+  const theme = useTheme();
   const { isRecording, startRecording, stopRecording, error, duration } = useAudioRecording();
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -19,9 +25,9 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete }) =>
     if (waveformRef.current && !wavesurferRef.current) {
       wavesurferRef.current = WaveSurfer.create({
         container: waveformRef.current,
-        waveColor: '#4a9eff',
-        progressColor: '#1e88e5',
-        cursorColor: '#1e88e5',
+        waveColor: theme.palette.primary.main,
+        progressColor: theme.palette.primary.dark,
+        cursorColor: theme.palette.primary.dark,
         barWidth: 2,
         barRadius: 3,
         cursorWidth: 1,
@@ -38,7 +44,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete }) =>
         wavesurferRef.current = null;
       }
     };
-  }, []);
+  }, [theme]);
 
   const handleStartRecording = async () => {
     if (audioUrl) {
@@ -73,108 +79,89 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete }) =>
   };
 
   return (
-    <div className="audio-recorder">
-      <div className="controls">
+    <Paper
+      elevation={3}
+      sx={{
+        p: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 2,
+        bgcolor: theme.palette.background.paper
+      }}
+    >
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
         {!isRecording ? (
-          <button 
+          <IconButton
             onClick={handleStartRecording}
-            className="record-button"
             disabled={!!error}
+            color="success"
+            size="large"
+            sx={{
+              bgcolor: theme.palette.success.main + '20',
+              '&:hover': {
+                bgcolor: theme.palette.success.main + '30',
+              }
+            }}
           >
-            Démarrer l'enregistrement
-          </button>
+            <MicIcon fontSize="large" />
+          </IconButton>
         ) : (
-          <button 
+          <IconButton
             onClick={handleStopRecording}
-            className="stop-button"
+            color="error"
+            size="large"
+            sx={{
+              bgcolor: theme.palette.error.main + '20',
+              '&:hover': {
+                bgcolor: theme.palette.error.main + '30',
+              }
+            }}
           >
-            Arrêter l'enregistrement ({formatDuration(duration)})
-          </button>
+            <StopIcon fontSize="large" />
+          </IconButton>
         )}
 
         {audioUrl && !isRecording && (
-          <button 
+          <IconButton
             onClick={togglePlayback}
-            className="playback-button"
+            color="primary"
+            size="large"
+            sx={{
+              bgcolor: theme.palette.primary.main + '20',
+              '&:hover': {
+                bgcolor: theme.palette.primary.main + '30',
+              }
+            }}
           >
-            {isPlaying ? 'Pause' : 'Lecture'}
-          </button>
+            {isPlaying ? <PauseIcon fontSize="large" /> : <PlayArrowIcon fontSize="large" />}
+          </IconButton>
         )}
-      </div>
+
+        {(isRecording || audioUrl) && (
+          <Typography variant="h6" color="text.secondary">
+            {formatDuration(duration)}
+          </Typography>
+        )}
+      </Box>
 
       {error && (
-        <div className="error-message">
+        <Typography color="error" variant="body2">
           {error}
-        </div>
+        </Typography>
       )}
 
-      <div 
+      <Box
         ref={waveformRef}
-        className="waveform-container"
-        style={{
+        sx={{
+          width: '100%',
           visibility: audioUrl ? 'visible' : 'hidden',
-          marginTop: '20px'
+          bgcolor: theme.palette.background.default,
+          borderRadius: 1,
+          p: 2
         }}
       />
-
-      <style>{`
-        .audio-recorder {
-          padding: 20px;
-          border-radius: 8px;
-          background: #f5f5f5;
-          max-width: 600px;
-          margin: 0 auto;
-        }
-
-        .controls {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 15px;
-        }
-
-        button {
-          padding: 10px 20px;
-          border-radius: 4px;
-          border: none;
-          cursor: pointer;
-          font-weight: 500;
-          transition: all 0.2s ease;
-        }
-
-        .record-button {
-          background-color: #4CAF50;
-          color: white;
-        }
-
-        .stop-button {
-          background-color: #f44336;
-          color: white;
-        }
-
-        .playback-button {
-          background-color: #2196F3;
-          color: white;
-        }
-
-        button:disabled {
-          background-color: #cccccc;
-          cursor: not-allowed;
-        }
-
-        .error-message {
-          color: #f44336;
-          margin-top: 10px;
-          font-size: 14px;
-        }
-
-        .waveform-container {
-          background: white;
-          padding: 10px;
-          border-radius: 4px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-      `}</style>
-    </div>
+    </Paper>
   );
 };
 
